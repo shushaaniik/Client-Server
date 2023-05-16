@@ -1,9 +1,5 @@
+#include "socket.hpp"
 #include <iostream>
-#include <cstring>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <unistd.h>
-#include <sys/socket.h>
 
 
 int main(int argc, char** argv) {
@@ -13,55 +9,27 @@ int main(int argc, char** argv) {
     exit(-1);
   }
 
-  const char* host = argv[1];
+  const char* ip = argv[1];
   int port = atoi(argv[2]);
 
-  // create a socket for the client to connect to the server
-  int clientSocket = socket(AF_INET, SOCK_STREAM, 0);
-  if (clientSocket < 0)
-  {
-    std::cerr << strerror(errno) << std::endl;
-    exit(errno);
-  }
-
-  // Bind the socket to the specified port
-  sockaddr_in serverAddress;
-
-  // For security doing memset()
-  memset(&serverAddress, 0, sizeof(sockaddr_in));
-
-  // Connect to the server
-  serverAddress.sin_family = AF_INET;
-  serverAddress.sin_addr.s_addr = inet_addr(host);
-  serverAddress.sin_port = htons(port);
-  if (connect(clientSocket, reinterpret_cast<sockaddr*>(&serverAddress), 
-              sizeof(serverAddress)) == -1) {
-    std::cerr << strerror(errno) << std::endl;
-    close(clientSocket);
-    exit(errno);
-  }
+  os::Socket client;
+  client.connect(ip, port);
 
   while(true) {
-    int num;
-    std::cout << "Enter number: ";
+    int num = 0;
+    std::cout << "Enter number(0 to quit): ";
     std::cin >> num;
     if(!num) { break; }
 
-    if(send(clientSocket, &num, sizeof(num), 0) < 0) {
-      std::cerr << strerror(errno) << std::endl;
-      exit(errno);
-    }
+    client.send(&num, sizeof(num));
 
     long long int result;
-
-    if(recv(clientSocket, &result, sizeof(result), 0) <= 0) {
-      std::cerr << strerror(errno) << std::endl;
-      exit(errno);
-    }
+    client.recv(&result, sizeof(result));
 
     std::cout << "Result: " << result << std::endl;
   }
 
-  close(clientSocket);
+  client.close();
+
   return 0;
 }

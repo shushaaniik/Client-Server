@@ -1,0 +1,119 @@
+#include "thread_pool.hpp"
+
+#include <cstring>
+#include <iostream>
+
+os::threadpool& os::threadpool::instance()
+{
+    static os::threadpool instance;
+    return instance;
+}
+
+os::threadpool::threadpool()
+{
+    this->validate(pthread_mutex_init(&this->_works_lock, NULL));
+    this->validate(pthread_mutex_init(&this->_workers_lock, NULL));
+    this->validate(pthread_cond_init(&this->_can_be_dequeued,NULL));
+
+    for(auto i = 0; i < 4; i++)
+        this->create_worker(true);
+}
+
+void os::threadpool::enqueue_work(entry_point_t entry_point, input_t input, callback_t callback)
+{
+    if(entry_point == nullptr)
+        throw std::invalid_argument("INVALID ENTRY POINT");
+
+    os::execution_context context;
+    context._entry_point = (entry_point_t)entry_point;
+    context._callback = callback;
+    context._input = input;
+
+    this->validate(pthread_mutex_lock(&this->_works_lock));
+    this->_works.push(context);
+
+    if(this->_workers.size() <= 32UL)
+        this->create_worker(false);
+
+    pthread_cond_signal(&this->_can_be_dequeued);
+    
+    this->validate(pthread_mutex_unlock(&this->_works_lock));
+}
+
+void os::threadpool::create_worker(bool is_main)
+{
+    pthread_t pthread_id;
+    this->validate(pthread_create(&pthread_id, NULL, os::threadpool::start_routine, (void*)is_main));
+    this->validate(pthread_detach(pthread_id));
+
+    this->validate(pthread_mutex_lock(&this->_workers_lock));
+    this->_workers.insert(pthread_id);
+    this->validate(pthread_mutex_unlock(&this->_workers_lock));
+}
+
+void os::threadpool::do_work(bool is_main)
+{
+    do
+    {
+        this->validate(pthread_mutex_lock(&this->_works_lock));
+
+        while(this->_works.empty())
+            pthread_cond_wait(&this->_can_be_dequeued, &this->_works_lock);
+
+        auto work = this->_works.front();
+        this->_works.pop();
+        this->busy_count++;
+
+        this->validate(pthread_mutex_unlock(&this->_works_lock));
+
+        auto output = work._entry_point(work._input);
+        if(work._callback != nullptr)
+            output = work._callback(work._input, output);
+        
+        this->validate(pthread_mutex_lock(&this->_works_lock));
+        this->busy_count--;
+        this->validate(pthread_mutex_unlock(&this->_works_lock));
+    } while (is_main); 
+
+    this->validate(pthread_mutex_lock(&this->_workers_lock));
+    this->_workers.erase(pthread_self());
+    this->validate(pthread_mutex_unlock(&this->_workers_lock));
+}
+
+void os::threadpool::state()
+{
+    this->validate(pthread_mutex_lock(&this->_works_lock));
+    this->validate(pthread_mutex_lock(&this->_workers_lock));
+
+    std::string state = "BUSY COUNT :" + std::to_string(this->busy_count) + '\n'
+              + "WORKS COUNT : "   + std::to_string(this->_works.size()) + '\n'
+              + "WORKERS COUNT : " + std::to_string(this->_workers.size()) + '\n';
+    std::cerr << state;
+
+    this->validate(pthread_mutex_unlock(&this->_works_lock));
+    this->validate(pthread_mutex_unlock(&this->_workers_lock));
+}
+
+void os::threadpool::exit()
+{
+    pthread_exit(0);
+}
+
+void* os::threadpool::start_routine(void* input)
+{
+    os::threadpool::instance().do_work((bool)input);
+    return NULL;
+}
+
+void os::threadpool::destroy()
+{
+    this->validate(pthread_mutex_destroy(&this->_works_lock));
+    this->validate(pthread_mutex_destroy(&this->_workers_lock));
+    this->validate(pthread_cond_destroy(&this->_can_be_dequeued));
+}
+
+void os::threadpool::validate(int err)
+{
+    if(err != 0)
+        throw std::runtime_error(strerror(err));
+}
