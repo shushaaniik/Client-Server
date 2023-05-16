@@ -19,6 +19,7 @@ For the thread pool you can use one from previous homeworks or use any other lib
 Every program should be in a separate folder, have its own Makefile.
 Extra: For the highest score, you must write a Dockerfile and a docker-compose.yml file to run the server (only server) in a container. The Dockerfile should also take care of building the server automatically (google two-stage build in docker).
 
+
 ## Usage:
 
 **From first terminal**
@@ -40,3 +41,18 @@ make
 ```
 
 **The number of clients can be any**
+
+
+## Dockerfile usage:
+```
+docker build -t server-container .
+docker run -p 8080:8080 --name server server-container
+```
+
+**these command may require _sudo_ permission**
+
+```
+docker stop server
+```
+
+
