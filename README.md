@@ -1,7 +1,7 @@
 # TCP client-server
 
 ## Requirements
-**Write two programs - the client and the server.
+Write two programs - the client and the server.
 Server program should open and listen a TCP port N that is given via command-line arguments.
 On every connection that server receives, the server should receive a 4-byte integer M as an input from the client.
 After the input number is received from the client, the server should asynchronously handle the client connection as follows:
@@ -17,7 +17,7 @@ Once number is entered in the client program, the communication with server shou
 As in case of the server, client program should do the operations asynchronously (preferrably with thread pooling).
 For the thread pool you can use one from previous homeworks or use any other library (including C++ standard library).
 Every program should be in a separate folder, have its own Makefile.
-Extra: For the highest score, you must write a Dockerfile and a docker-compose.yml file to run the server (only server) in a container. The Dockerfile should also take care of building the server automatically (google two-stage build in docker).**
+Extra: For the highest score, you must write a Dockerfile and a docker-compose.yml file to run the server (only server) in a container. The Dockerfile should also take care of building the server automatically (google two-stage build in docker).
 
 ## Usage:
 
