@@ -49,24 +49,26 @@ long long int calculate_prime(int n) {
 // Function to handle client connections
 void handleConnection(int clientSocket)
 {
-  // Receive the input number from the client
-  int inputNumber;
-  if (recv(clientSocket, &inputNumber, sizeof(inputNumber), 0) != sizeof(inputNumber))
-  {
-    std::cerr << strerror(errno) << std::endl;
-    close(clientSocket);
-    exit(errno);
+  while(true) { 
+    // Receive the input number from the client
+    int inputNumber;
+    if (recv(clientSocket, &inputNumber, sizeof(inputNumber), 0) != sizeof(inputNumber))
+    {
+      std::cerr << strerror(errno) << std::endl;
+      close(clientSocket);
+      exit(errno);
+    }
+
+    // Calculate the n-th prime number
+    long long int result = calculate_prime(inputNumber);
+
+    // Send the calculated number back to the client
+    if (send(clientSocket, &result, sizeof(result), 0) != sizeof(result))
+    {
+      std::cerr << "Failed to send result to client" << std::endl;
+    }
   }
-
-  // Calculate the n-th prime number
-  long long int result = calculate_prime(inputNumber);
-
-  // Send the calculated number back to the client
-  if (send(clientSocket, &result, sizeof(result), 0) != sizeof(result))
-  {
-    std::cerr << "Failed to send result to client" << std::endl;
-  }
-
+  
   // Close the client socket
   close(clientSocket);
 }
